@@ -1,7 +1,20 @@
 from crewai import Task
 
 class MedicalTasks:
+
+    """
+    Classe dedicata alla definizione dei Task (compiti) assegnati agli agenti di CrewAI.
+    Ogni metodo restituisce un oggetto Task configurato con una descrizione chiara, 
+    l'output atteso e, se necessario, il contesto derivante dai task precedenti.
+    """
+
     def manager_router_task(self, agent):
+        """
+        Task per l'agente orchestratore. 
+        Definisce l'obiettivo di analizzare la richiesta dell'utente e coordinare 
+        il flusso di lavoro decidendo a quali agenti delegare le operazioni.
+        """
+
         return Task(
             name="Manager Router Task",
             description=(
@@ -13,6 +26,12 @@ class MedicalTasks:
         )
 
     def query_processing_task(self, agent):
+        """
+        Task per lo specialista sintattico (QPA). 
+        Analizza la domanda dell'utente e la traduce in una query API (FHIR search path) 
+        o determina che non è necessario interrogare il server.
+        """
+
         return Task(
             name="Query Processing Task",
             description=(
@@ -26,6 +45,12 @@ class MedicalTasks:
         )
 
     def fhir_data_retrieval_task(self, agent):
+        """
+        Task per il recupero dati (FDRA). 
+        Prende in input la query generata dal task precedente e la esegue sul server,
+        restituendo i dati grezzi in formato JSON.
+        """
+
         return Task(
             name="FHIR Data Retrieval Task",
             description="Receive the FHIR path and use the tool to execute the GET query on the server.",
@@ -34,6 +59,12 @@ class MedicalTasks:
         )
 
     def data_update_task(self, agent):
+        """
+        Task opzionale per l'aggiornamento dei dati (DUA). 
+        Si attiva solo se la richiesta dell'utente implica la creazione o l'aggiornamento 
+        di una risorsa sul server (operazioni POST/PUT).
+        """
+
         return Task(
             name="Data Update Task",
             description=(
@@ -45,6 +76,12 @@ class MedicalTasks:
         )
 
     def data_interpretation_task(self, agent):
+        """
+        Task di sintesi clinica (DIA). 
+        Converte i dati JSON tecnici in una risposta narrativa o fornisce direttamente 
+        una diagnosi medica basata sulle conoscenze generali se non ci sono dati FHIR.
+        """
+
         return Task(
             name="Data Interpretation Task",
             description=(
@@ -64,6 +101,12 @@ class MedicalTasks:
         )
 
     def ica_scoring_task(self, agent, context_tasks):
+        """
+        Task di valutazione. 
+        Confronta il JSON originale con le interpretazioni mediche prodotte 
+        e restituisce un punteggio di accuratezza in formato JSON strutturato.
+        """
+
         return Task(
             name="ICA Scoring Task",
             description=(
@@ -83,6 +126,12 @@ class MedicalTasks:
         )
 
     def verification_task(self, agent, context_tasks=None):
+        """
+        Task di verifica medica. 
+        Controlla se la diagnosi finale è clinicamente coerente con i dati.
+        Il task tollera problemi di formattazione ma rigetta le inesattezze cliniche.
+        """
+
         return Task(
             name="Verification Task",
             description=(
@@ -98,6 +147,11 @@ class MedicalTasks:
         )
 
     def reflexion_task(self, agent, context_tasks, original_question):
+        """
+        Task di raffinamento (Reflexion). 
+        Si attiva solo se il 'Verification Task' ha rigettato la risposta precedente.
+        L'agente analizza la critica ricevuta nel contesto e formula una risposta corretta.
+        """
         return Task(
         name="Reflexion and Refinement Task",
         description=(

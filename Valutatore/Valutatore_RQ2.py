@@ -1,3 +1,14 @@
+"""
+Valutatore RQ2 - LLM-as-a-Judge & Correlazione Statistica.
+
+Questo script analizza le risposte fornite dal sistema nella condizione 'full' (RQ2).
+Poiché le risposte cliniche (basate su dati FHIR) possono essere complesse e narrative, 
+viene utilizzato un LLM locale (Ollama) come "Giudice" per valutare la correttezza 
+rispetto alla verità di base (Ground Truth) tramite una rubrica a 3 livelli.
+
+Infine, calcola la correlazione di Spearman tra la qualità della risposta (Correttezza) 
+e la confidenza del sistema (misurata tramite il punteggio ICA di accordo tra gli agenti).
+"""
 import os
 import json
 import csv
@@ -8,14 +19,18 @@ from scipy.stats import spearmanr
 # ==========================================
 # CONFIGURAZIONE OLLAMA E FILE
 # ==========================================
+# Modello in esecuzione su Ollama locale che funge da valutatore imparziale
 MODELLO_OLLAMA = "gemma4:26b"
 URL_OLLAMA = "http://localhost:11434/api/generate"
 FILE_RQ2_FULL = "./RQ2_full.json"  
 
 def valuta_con_llm_3_livelli(domanda, risposta_corretta, risposta_agente):
     """
-    Usa l'LLM come Giudice applicando la rubrica a 3 livelli (0, 1, 2).
+    Usa l'LLM locale come Giudice applicando una rubrica clinica a 3 livelli (0, 1, 2).
+    Invia un prompt con la domanda, la risposta attesa e quella dell'agente, 
+    richiedendo in output esclusivamente un valore numerico.
     """
+
     prompt_giudice = f"""Sei un valutatore clinico severo per un esperimento di Intelligenza Artificiale.
     Valuta la RISPOSTA DELL'AGENTE confrontandola con la RISPOSTA CORRETTA (Verità).
     
@@ -36,7 +51,7 @@ def valuta_con_llm_3_livelli(domanda, risposta_corretta, risposta_agente):
         "prompt": prompt_giudice,
         "stream": False,
         "options": {
-            "temperature": 0.0
+            "temperature": 0.0  # Temperatura a 0 per garantire valutazioni deterministiche
         }
     }
     
@@ -44,7 +59,8 @@ def valuta_con_llm_3_livelli(domanda, risposta_corretta, risposta_agente):
         response = requests.post(URL_OLLAMA, json=payload)
         response.raise_for_status()
         risultato = response.json().get("response", "").strip()
-        
+
+        # Mappatura sicura dell'output dell'LLM ai valori numerici e descrittivi
         if "2" in risultato: return 2, "2 (Completa)"
         elif "1" in risultato: return 1, "1 (Parziale)"
         else: return 0, "0 (Errata)"
@@ -54,6 +70,12 @@ def valuta_con_llm_3_livelli(domanda, risposta_corretta, risposta_agente):
         return 0, "Errore Valutazione"
 
 def analizza_rq2_full():
+    """
+    Esegue l'estrazione dei dati di log, pulisce i tag di formattazione (es. 'APPROVED'), 
+    richiede la valutazione all'LLM e calcola metriche statistiche (Spearman) 
+    sulla relazione tra accuratezza clinica e accordo interno del modello (ICA).
+    """
+
     if not os.path.exists(FILE_RQ2_FULL):
         print(f" File non trovato: {FILE_RQ2_FULL}")
         return
@@ -71,13 +93,19 @@ def analizza_rq2_full():
         correct_ans = str(item.get("correct_answer", ""))
         
         vera_risposta = str(item.get("system_answer", "")).strip()
+
+        # Pulizia dell'output dagli artefatti lasciati dall'agente verificatore
         if "APPROVED" in vera_risposta:
             vera_risposta = vera_risposta.replace("APPROVED:", "").replace("APPROVED\n", "").replace("APPROVED", "").replace("**", "").strip()
+        
+        # Fallback alla risposta di maggioranza se la risposta finale è vuota
         if not vera_risposta:
             vera_risposta = str(item.get("sc_majority_answer", "N/A"))
         
         raw_ica = item.get("sc_ica_score", 0)
         ica_val = float(raw_ica) if raw_ica is not None else 0.0
+
+        # Normalizzazione in scala percentuale (0-100)
         if 0 < ica_val <= 1.0: 
             ica_val *= 100
             
@@ -95,14 +123,17 @@ def analizza_rq2_full():
             "Risposta Agente": vera_risposta
         })
 
+    # Analisi statistica con NumPy e SciPy
     arr_ica = np.array(ica_scores)
     arr_corr = np.array(correctness_scores)
-    
+
+    # Calcolo della correlazione di Spearman (se c'è varianza sufficiente nei dati)
     if len(arr_ica) > 1 and len(np.unique(arr_ica)) > 1 and len(np.unique(arr_corr)) > 1:
         corr, pvalue = spearmanr(arr_ica, arr_corr)
     else:
         corr, pvalue = 0.0, 1.0
-    
+
+    # Confronto dell'ICA medio tra risposte corrette (score 1 o 2) e risposte errate (score 0)
     ica_corrette = arr_ica[arr_corr >= 1]
     ica_errate = arr_ica[arr_corr == 0]
     

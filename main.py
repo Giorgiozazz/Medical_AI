@@ -1,3 +1,12 @@
+"""
+Main Module - Orchestrazione Esperimenti Medici e Logico-Matematici.
+
+Questo script funge da punto di ingresso (entry point) per l'intero sistema.
+In base alle variabili di ambiente (.env), carica la condizione sperimentale desiderata 
+(es. baseline, full) e avvia l'elaborazione dei dataset specifici per le tre 
+Research Question (RQ1, RQ2, RQ3), gestendo dinamicamente l'attivazione degli agenti 
+CrewAI e il salvataggio dei log.
+"""
 import src.logger as logger
 import src.agents as agents
 import src.tools as tools
@@ -11,6 +20,8 @@ import requests
 from dotenv import load_dotenv
 load_dotenv()
 
+# Mappa delle condizioni sperimentali che determinano l'attivazione di specifiche funzionalità
+# (Chain-of-Thought, Self-Consistency, Verifier) e i parametri del modello.
 CONDITIONS_MAP = {
     "baseline": {"agent_mode": "multi", "cot": False, "sc": False, "verifier": False, "temperature": 0.0, "n_sc_runs": 1, "k_max": 5},
     "ablA": {"agent_mode": "multi", "cot": True,  "sc": False, "verifier": False, "temperature": 0.0, "n_sc_runs": 1, "k_max": 5},
@@ -19,6 +30,12 @@ CONDITIONS_MAP = {
 }
 
 def elaborate(question_id: str = None, user_input: str = None, correct_answer: str = None):
+    """
+    Funzione core per l'elaborazione di una singola domanda (medica o generale).
+    Instanzia il modello LLM, inizializza gli agenti e i task necessari in base alla 
+    condizione sperimentale, esegue la CrewAI e struttura i risultati nel file di log.
+    """
+
     current_config = CONDITIONS_MAP.get(os.getenv("CONDITION"))
 
     MODEL_NAME = os.getenv("MODEL_NAME")
@@ -30,6 +47,7 @@ def elaborate(question_id: str = None, user_input: str = None, correct_answer: s
     N_SC_RUNS = current_config["n_sc_runs"]
     K_MAX = current_config["k_max"]
 
+    # Configurazione globale del modello di linguaggio
     llm_model = LLM(
         model=MODEL_NAME,
         base_url=API_SERVER,
@@ -40,6 +58,7 @@ def elaborate(question_id: str = None, user_input: str = None, correct_answer: s
 
     log = logger.MedicalLogger()
 
+    # Registrazione metadati iniziali
     if question_id:
         log.log["question_id"] = question_id
     log.log["question_text"] = user_input
@@ -50,6 +69,7 @@ def elaborate(question_id: str = None, user_input: str = None, correct_answer: s
     log.log["model_params"]["n_sc_runs"] = N_SC_RUNS
     log.log["model_params"]["k_max"] = K_MAX
 
+    # Inizializzazione degli agenti e dei task base
     med_agents = agents.MedicalAgents(llm=llm_model, logger=log, current_config=current_config)
     med_tasks = tasks.MedicalTasks()
 
@@ -74,17 +94,23 @@ def elaborate(question_id: str = None, user_input: str = None, correct_answer: s
 
     print(f"Running in {CONDITION} condition")
 
+    # Composizione dinamica della Crew in base alla condizione sperimentale
     match CONDITION:
         case "baseline":
+            # Nessun coordinatore avanzato, esecuzione standard
             base_tasks.append(task_interpretation)
             manager_llm_model = llm_model
 
         case "ablA":
+            # Aggiunta del Manager (ReAct) e attivazione del Chain-of-Thought
+
             manager = med_agents.manager_router()
             base_tasks.insert(0, med_tasks.manager_router_task(manager))
             base_tasks.append(task_interpretation)
 
         case "ablB":
+            # Aggiunta del Manager, Chain-of-Thought e Self-Consistency
+
             manager = med_agents.manager_router()
             base_agents.insert(0, manager) 
             sc_tasks = [med_tasks.data_interpretation_task(interpreter) for _ in range(N_SC_RUNS)]
@@ -92,6 +118,8 @@ def elaborate(question_id: str = None, user_input: str = None, correct_answer: s
             base_tasks = [med_tasks.manager_router_task(manager)] + base_tasks + sc_tasks + [ica_task]
 
         case "full":
+            # Condizione completa: ReAct + CoT + Self-Consistency + Verifier
+
             manager = med_agents.manager_router()
             verifier = med_agents.verifier_agent()
             base_agents.extend([manager, verifier])
@@ -108,6 +136,7 @@ def elaborate(question_id: str = None, user_input: str = None, correct_answer: s
                 verification_task
             ]
 
+    # Avvio della sequenza di agenti
     crew = Crew(
         agents=base_agents,
         tasks=base_tasks,
@@ -125,12 +154,15 @@ def elaborate(question_id: str = None, user_input: str = None, correct_answer: s
     
 
     def extract_json(text):
+        """Helper per estrarre blocchi JSON grezzi dall'output formattato in markdown."""
+
         match = re.search(r'```(?:json)?(.*?)```', text, re.DOTALL)
         if match: return match.group(1).strip()
         match_braces = re.search(r'\{.*\}', text, re.DOTALL)
         if match_braces: return match_braces.group(0).strip()
         return text.strip()
-
+    
+    # Valutazione della Self-Consistency e dell' ICA
     if sc_tasks and current_config["sc"]:
         responses = [task.output.raw for task in sc_tasks if hasattr(task, 'output') and task.output]
         log.log["sc_runs"] = [{"response": r, "score": None} for r in responses]
@@ -144,6 +176,8 @@ def elaborate(question_id: str = None, user_input: str = None, correct_answer: s
             scores = ica_result.get("scores", [])
             best_idx = ica_result.get("best_response_index", 0)
             best_score = ica_result.get("best_score", None)
+
+            # Se l'accordo è troppo basso (< 85%), si flagga la necessità di riflessione o revisione
             if best_score is not None and best_score < 0.85:
                 trigger_reflexion_by_ica = True
                 log.log["low_agreement_flag"] = True  
@@ -157,6 +191,7 @@ def elaborate(question_id: str = None, user_input: str = None, correct_answer: s
             log.log["sc_runs"] = detailed_runs
             log.log["sc_ica_score"] = best_score
 
+            # Salvataggio della risposta ritenuta migliore tra le corse multiple
             if isinstance(best_idx, int) and 0 <= best_idx < len(responses):
                 best_response_text = responses[best_idx]
                 log.log["sc_majority_answer"] = best_response_text
@@ -166,6 +201,7 @@ def elaborate(question_id: str = None, user_input: str = None, correct_answer: s
             print(f"Errore nel parsing del JSON di ICA Task: {e}")
             print(f"Testo analizzato che ha causato l'errore: {ica_raw_output}")
 
+    # Gestione del ciclo di verifica (Verifier) ed eventuale raffinamento (Reflexion) per la condizione 'full'
     if CONDITION == "full" and 'verification_task' in locals() and verification_task and verification_task.output:
         v_output = verification_task.output.raw
         v_output_upper = v_output.upper()
@@ -180,7 +216,8 @@ def elaborate(question_id: str = None, user_input: str = None, correct_answer: s
             critique=v_output,
             approved=is_approved
         )
-        
+
+        # Se l'ICA è basso, forza un ciclo extra di ragionamento
         if trigger_reflexion_by_ica:
             
             ref_task = med_tasks.reflexion_task(
@@ -199,6 +236,7 @@ def elaborate(question_id: str = None, user_input: str = None, correct_answer: s
         else:
             log.log["verifier_approved"] = is_approved
 
+    # Registrazione query finale ed esportazione su file
     log.log["fhir_query"] = task_query.output.raw if hasattr(task_query, 'output') and task_query.output else None
 
     log.save_log()
@@ -206,6 +244,11 @@ def elaborate(question_id: str = None, user_input: str = None, correct_answer: s
     return log.log
 
 def research_question_1():
+    """
+    Esegue l'esperimento relativo alla Research Question 1 (RQ1).
+    Legge un set di domande a risposta multipla da un JSON locale e invia ogni query 
+    al sistema per la valutazione della capacità di risposta di base del modello.
+    """
 
     with open("datasets/data/domande_rq1.json", 'r', encoding='utf-8') as file:
         data = json.load(file)
@@ -231,6 +274,12 @@ def research_question_1():
     print("Tutte le domande di RQ1 sono state elaborate.")
 
 def research_question_2():
+    """
+    Esegue l'esperimento relativo alla Research Question 2 (RQ2).
+    Inietta nei prompt del modello dati clinici sintetici (FHIR JSON) letti 
+    da file locali per testare la capacità di interpretazione contestuale.
+    """
+
     cartella_pazienti_locali = "./datasets/data/FHIR/fhir/"
     with open("datasets/data/pazienti_rq2.json", 'r', encoding='utf-8') as file:
         data = json.load(file)
@@ -269,11 +318,19 @@ def research_question_2():
             print(f"[{question_id}] Errore lettura file: {e}")
 
     condizione = os.getenv("CONDITION", "baseline")
+
+    # Salva il dump complessivo dei risultati per la RQ2
     with open(f"RQ2_{condizione}.json", 'w', encoding='utf-8') as f:
         json.dump(risultati_finali, f, indent=4, ensure_ascii=False)
 
 def research_question_3():
-    
+    """
+    Esegue l'esperimento relativo alla Research Question 3 (RQ3).
+    Questo modulo devia dal dominio clinico per testare l'architettura su problemi 
+    matematici e logici puri (GSM8K dataset), verificando se i workflow (es. full condition) 
+    migliorano le performance a prescindere dal contesto medico.
+    """
+
     import os
     import json
     from crewai import Agent, Task, Crew, Process, LLM
@@ -322,7 +379,8 @@ def research_question_3():
         
         agenti_attivi = [agente_logico]
         task_attivi = [risoluzione_task]
-        
+
+        # Nella condizione 'full', si innesca il doppio controllo matematico
         if condizione_attuale == "full":
             verifica_task = Task(
                 description=f"Verify the mathematical correctness of the previous answer against the original problem: {question_text}. Correct the answer if the math is wrong.",
@@ -342,7 +400,8 @@ def research_question_3():
         try:
             risultato_crew = mini_crew.kickoff()
             if condizione_attuale == "full":
-               
+
+               # Estrazione condizionale della risposta in base all'esito del Verificatore
                 ultimo_task = risultato_crew.tasks_output[-1].raw
                 if "APPROVED" in ultimo_task.upper():
                     
@@ -373,5 +432,7 @@ def research_question_3():
 
     print(f"\n Esecuzione RQ3 completata per la condizione {condizione_attuale}!")
 
+# Entry point dello script
 if __name__ == "__main__":
+    # Avvia l'esperimento modificando la funzione chiamata qui sotto a seconda delle necessità.
     research_question_2()

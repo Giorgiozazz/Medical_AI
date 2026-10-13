@@ -2,12 +2,28 @@ from crewai import Agent
 import src.tools as tools
 
 class MedicalAgents:
+    """
+    Classe che definisce e istanzia gli agenti AI specializzati (basati su CrewAI) 
+    per l'elaborazione, il recupero e l'interpretazione di dati medici standardizzati (FHIR).
+    Ogni agente ha un ruolo specifico all'interno della pipeline di ragionamento.
+    """
+
     def __init__(self, llm, logger, current_config):
+        """
+        Inizializza la classe fornendo agli agenti il modello di linguaggio (LLM), 
+        il sistema di logging e la configurazione corrente dell'esperimento.
+        """
+
         self.llm = llm
         self.logger = logger
         self.current_config = current_config
 
     def catch_reasoning(self, log_attribute=None):
+        """
+        Funzione di callback che intercetta l'output di ogni step di ragionamento dell'agente.
+        Se la configurazione prevede il Chain-of-Thought (cot), salva l'output nel logger.
+        """
+
         def callback(step_output):
             if log_attribute:
                 output = str(step_output.output) if step_output else "None"
@@ -17,6 +33,11 @@ class MedicalAgents:
         return callback
 
     def manager_router(self):
+        """
+        Crea e restituisce l'agente orchestratore (Manager).
+        Applica il framework ReAct per valutare la domanda dell'utente, 
+        selezionare l'agente più adatto per il compito e delegare l'azione senza inventare dati.
+        """
         return Agent(
             role="Medical Workflow Manager",
             goal="Coordinate the agents to respond to the demand: {user_question}",
@@ -42,6 +63,12 @@ class MedicalAgents:
         )
 
     def query_processing_agent(self):
+        """
+        Crea e restituisce lo specialista sintattico (QPA).
+        Traduce la richiesta in linguaggio naturale in una stringa di interrogazione 
+        API valida per i server FHIR, implementando strategie adattive se la ricerca è troppo restrittiva.
+        """
+
         return Agent(
             role='Query Processing Agent',
             goal='Translate natural language into valid FHIR search paths.',
@@ -63,6 +90,12 @@ class MedicalAgents:
         )
 
     def fhir_data_retrieval_agent(self):
+        """
+        Crea e restituisce l'agente di recupero dati (FDRA).
+        Utilizza i tool di sistema per eseguire materialmente le chiamate HTTP (GET) 
+        al database FHIR, evitando severamente la simulazione dei file JSON.
+        """
+
         return Agent(
             role='FHIR Data Retrieval Agent',
             goal='Execute read queries on the server using tools.',
@@ -80,6 +113,12 @@ class MedicalAgents:
         )
 
     def data_update_agent(self):
+        """
+        Crea e restituisce l'agente per l'aggiornamento dati (DUA).
+        Si occupa della generazione di risorse JSON conformi allo standard FHIR 
+        e dell'esecuzione delle chiamate POST per caricare i dati sul server.
+        """
+
         return Agent(
             role='Data Update Agent',
             goal='Create valid FHIR JSON resources and execute upload.',
@@ -92,6 +131,12 @@ class MedicalAgents:
         )
 
     def data_interpretation_agent(self):
+        """
+        Crea e restituisce l'agente di interpretazione clinica (DIA).
+        Agisce come un medico esperto: analizza i risultati JSON grezzi restituiti dal server 
+        e genera un report sintetico e conclusivo sulla base delle evidenze estratte.
+        """
+
         return Agent(
             role='Data Interpretation Agent / Medical Expert',
             goal='Translate technical JSON into a concise report, or answer general medical questions directly and briefly.',
@@ -106,6 +151,12 @@ class MedicalAgents:
         )
 
     def verifier_agent(self):
+        """
+        Crea e restituisce l'agente verificatore.
+        Valuta se l'output del DIA è clinicamente corretto e aderente ESCLUSIVAMENTE 
+        ai dati JSON ottenuti. Se la risposta non è corretta, fornisce feedback per la riformulazione.
+        """
+        
         return Agent(
             role='Verifier Agent',
             goal='Evaluate the quality of the final answer, providing feedback and suggestions for improvement.',
