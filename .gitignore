@@ -1,0 +1,15 @@
+# Virtual Environment and Environment Variables
+venv
+.env
+
+# Startup Script
+startup.sh
+
+# Logs and Cache
+temp/
+logs/
+__pycache__/
+doc
+
+# datasets
+datasets/data/

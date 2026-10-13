@@ -1,0 +1,302 @@
+[
+{
+"question_id": "A01",
+"patient_id": "INSERISCI_ID_QUI",
+"question_text": "Qual è la diagnosi principale attiva del paziente? (cerca condition con clinicalStatus=active e verificationStatus=confirmed, ordina per onsetDateTime decrescente)",
+"correct_answer": "Condition.code.text (prima condizione attiva confermata)"
+},
+{
+"question_id": "A02",
+"patient_id": "INSERISCI_ID_QUI",
+"question_text": "Il paziente ha mai avuto una diagnosi di diabete mellito di tipo 2? Riporta data di insorgenza se presente.",
+"correct_answer": "Condition.code (SNOMED 44054006) + Condition.onsetDateTime"
+},
+{
+"question_id": "A03",
+"patient_id": "INSERISCI_ID_QUI",
+"question_text": "Quante condizioni croniche attive risultano nel record del paziente?",
+"correct_answer": "count(Condition where clinicalStatus=active AND category=problem-list-item)"
+},
+{
+"question_id": "A04",
+"patient_id": "INSERISCI_ID_QUI",
+"question_text": "Il paziente ha una diagnosi di ipertensione arteriosa? Da quanti anni è presente?",
+"correct_answer": "Condition.code (SNOMED 59621000) + anni calcolati da onsetDateTime"
+},
+{
+"question_id": "A05",
+"patient_id": "INSERISCI_ID_QUI",
+"question_text": "Elenca tutte le condizioni risolte (resolved) nel record del paziente con la relativa data di risoluzione.",
+"correct_answer": "Condition.code.text[] dove clinicalStatus=resolved + abatementDateTime"
+},
+{
+"question_id": "A06",
+"patient_id": "INSERISCI_ID_QUI",
+"question_text": "Il paziente ha mai ricevuto una diagnosi oncologica? Se sì, specifica la sede e lo stadio se disponibile.",
+"correct_answer": "Condition con ICD-10 C* o SNOMED morfologia neoplastica"
+},
+{
+"question_id": "A07",
+"patient_id": "INSERISCI_ID_QUI",
+"question_text": "Quali condizioni sono state registrate nell'ultimo anno solare?",
+"correct_answer": "Condition[] con recordedDate negli ultimi 12 mesi"
+},
+{
+"question_id": "A08",
+"patient_id": "INSERISCI_ID_QUI",
+"question_text": "Il paziente ha condizioni di salute mentale documentate? Elencale.",
+"correct_answer": "Condition con categoria mental-health o codici SNOMED relativi"
+},
+{
+"question_id": "A09",
+"patient_id": "INSERISCI_ID_QUI",
+"question_text": "Qual è la condizione con onset più remoto nel record del paziente?",
+"correct_answer": "Condition con onsetDateTime minimo tra tutte le condizioni"
+},
+{
+"question_id": "A10",
+"patient_id": "INSERISCI_ID_QUI",
+"question_text": "Esistono condizioni in stato 'unconfirmed' o 'provisional'? Se sì, elencale.",
+"correct_answer": "Condition[] con verificationStatus=unconfirmed OR provisional"
+},
+{
+"question_id": "B01",
+"patient_id": "INSERISCI_ID_QUI",
+"question_text": "Quali farmaci assume attualmente il paziente? Elenca nome, dosaggio e frequenza.",
+"correct_answer": "MedicationRequest[status=active].medication.text + dosageInstruction"
+},
+{
+"question_id": "B02",
+"patient_id": "INSERISCI_ID_QUI",
+"question_text": "Il paziente assume anticoagulanti? Se sì, specifica il principio attivo e la dose giornaliera.",
+"correct_answer": "MedicationRequest con ATC B01A* o testo contenente warfarin/apixaban/rivaroxaban/dabigatran"
+},
+{
+"question_id": "B03",
+"patient_id": "INSERISCI_ID_QUI",
+"question_text": "Quante prescrizioni attive ha il paziente in totale?",
+"correct_answer": "count(MedicationRequest where status=active)"
+},
+{
+"question_id": "B04",
+"patient_id": "INSERISCI_ID_QUI",
+"question_text": "Il paziente sta assumendo farmaci per l'ipertensione (antipertensivi)? Elencali.",
+"correct_answer": "MedicationRequest con ATC C02*/C03*/C07*/C08*/C09* o testo corrispondente"
+},
+{
+"question_id": "B05",
+"patient_id": "INSERISCI_ID_QUI",
+"question_text": "Qual è il farmaco prescritto più di recente? Riporta data di prescrizione e prescrittore se disponibile.",
+"correct_answer": "MedicationRequest con authoredOn massimo + requester.display"
+},
+{
+"question_id": "B06",
+"patient_id": "INSERISCI_ID_QUI",
+"question_text": "Il paziente ha avuto prescrizioni di antibiotici nell'ultimo anno? Se sì, per quale indicazione?",
+"correct_answer": "MedicationRequest con ATC J01* + reasonReference o reasonCode"
+},
+{
+"question_id": "B07",
+"patient_id": "INSERISCI_ID_QUI",
+"question_text": "Esistono farmaci riportati dal paziente (MedicationStatement) ma non prescritti formalmente? Elencali.",
+"correct_answer": "MedicationStatement[informationSource=Patient] non corrispondenti a MedicationRequest attivi"
+},
+{
+"question_id": "B08",
+"patient_id": "INSERISCI_ID_QUI",
+"question_text": "Il paziente assume farmaci che richiedono monitoraggio renale (es. metformina, FANS, ACE-inibitori)? Elencali.",
+"correct_answer": "MedicationRequest con principi attivi noti per nefrotossicità o controindicazione in IRC"
+},
+{
+"question_id": "B09",
+"patient_id": "INSERISCI_ID_QUI",
+"question_text": "Quali farmaci sono stati sospesi (status=stopped) negli ultimi 6 mesi? Riporta il motivo se disponibile.",
+"correct_answer": "MedicationRequest[status=stopped] con authoredOn negli ultimi 6 mesi + statusReason"
+},
+{
+"question_id": "B10",
+"patient_id": "INSERISCI_ID_QUI",
+"question_text": "Il paziente assume insulina o altri ipoglicemizzanti? Se sì, specifica il tipo e il regime posologico.",
+"correct_answer": "MedicationRequest con ATC A10* + dosageInstruction.text"
+},
+{
+"question_id": "C01",
+"patient_id": "INSERISCI_ID_QUI",
+"question_text": "Qual è il valore più recente di pressione arteriosa sistolica del paziente? Riporta anche la data di misurazione.",
+"correct_answer": "Observation[code=LOINC 8480-6].valueQuantity.value + effectiveDateTime"
+},
+{
+"question_id": "C02",
+"patient_id": "INSERISCI_ID_QUI",
+"question_text": "Qual è l'ultimo valore di HbA1c registrato? È nei limiti di normalità (< 7% per paziente diabetico)?",
+"correct_answer": "Observation[code=LOINC 4548-4].valueQuantity.value + referenceRange"
+},
+{
+"question_id": "C03",
+"patient_id": "INSERISCI_ID_QUI",
+"question_text": "Qual è il BMI attuale del paziente? Rientra nella norma (18.5–24.9)?",
+"correct_answer": "Observation[code=LOINC 39156-5].valueQuantity.value"
+},
+{
+"question_id": "C04",
+"patient_id": "INSERISCI_ID_QUI",
+"question_text": "Il paziente ha avuto valori di creatinina sierica fuori range nell'ultimo anno? Riporta i valori anomali.",
+"correct_answer": "Observation[code=LOINC 2160-0] con interpretation=H o L negli ultimi 12 mesi"
+},
+{
+"question_id": "C05",
+"patient_id": "INSERISCI_ID_QUI",
+"question_text": "Qual è la tendenza della frequenza cardiaca del paziente nelle ultime 3 misurazioni? (crescente, stabile, decrescente)",
+"correct_answer": "Observation[code=LOINC 8867-4][-3:].valueQuantity.value in ordine cronologico"
+},
+{
+"question_id": "C06",
+"patient_id": "INSERISCI_ID_QUI",
+"question_text": "Il paziente ha mai avuto un valore di glicemia a digiuno >= 126 mg/dL? Se sì, quante volte?",
+"correct_answer": "count(Observation[code=LOINC 1558-6] where valueQuantity.value >= 126)"
+},
+{
+"question_id": "C07",
+"patient_id": "INSERISCI_ID_QUI",
+"question_text": "Qual è l'ultimo profilo lipidico completo disponibile? Riporta colesterolo totale, LDL, HDL e trigliceridi.",
+"correct_answer": "Observation panel lipidico o singole Observation LOINC 2093-3/13457-7/2085-9/2571-8"
+},
+{
+"question_id": "C08",
+"patient_id": "INSERISCI_ID_QUI",
+"question_text": "Il paziente ha avuto febbre (temperatura > 38°C) documentata negli ultimi 6 mesi?",
+"correct_answer": "Observation[code=LOINC 8310-5] con valueQuantity.value > 38 negli ultimi 6 mesi"
+},
+{
+"question_id": "C09",
+"patient_id": "INSERISCI_ID_QUI",
+"question_text": "Qual è il valore di eGFR più recente e quale stadio di CKD indica se presente?",
+"correct_answer": "Observation[code=LOINC 69405-9 o 62238-1].valueQuantity.value + stadio CKD KDIGO"
+},
+{
+"question_id": "C10",
+"patient_id": "INSERISCI_ID_QUI",
+"question_text": "Il paziente ha una Observation con status 'preliminary' o 'registered' (non ancora finalizzata)?",
+"correct_answer": "Observation[] con status=preliminary OR registered"
+},
+{
+"question_id": "D01",
+"patient_id": "INSERISCI_ID_QUI",
+"question_text": "Qual è la data dell'ultimo accesso ospedaliero (ricovero) del paziente?",
+"correct_answer": "Encounter[class=IMP o EMER].period.start massimo"
+},
+{
+"question_id": "D02",
+"patient_id": "INSERISCI_ID_QUI",
+"question_text": "Quante visite ambulatoriali ha effettuato il paziente nell'ultimo anno?",
+"correct_answer": "count(Encounter[class=AMB] con period.start negli ultimi 12 mesi)"
+},
+{
+"question_id": "D03",
+"patient_id": "INSERISCI_ID_QUI",
+"question_text": "Il paziente ha avuto accessi al pronto soccorso negli ultimi 2 anni? Se sì, per quale motivo principale?",
+"correct_answer": "Encounter[class=EMER] con period.start negli ultimi 24 mesi + reasonCode o reasonReference"
+},
+{
+"question_id": "D04",
+"patient_id": "INSERISCI_ID_QUI",
+"question_text": "Il paziente ha subito interventi chirurgici documentati? Elenca nome della procedura e data.",
+"correct_answer": "Procedure[category=surgical] con status=completed + performedDateTime"
+},
+{
+"question_id": "D05",
+"patient_id": "INSERISCI_ID_QUI",
+"question_text": "Il paziente ha effettuato esami di imaging (radiografia, TAC, risonanza) nell'ultimo anno?",
+"correct_answer": "Procedure con codici SNOMED imaging o ImagingStudy resource negli ultimi 12 mesi"
+},
+{
+"question_id": "D06",
+"patient_id": "INSERISCI_ID_QUI",
+"question_text": "Qual è la durata media dei ricoveri ospedalieri del paziente (in giorni)?",
+"correct_answer": "media di (Encounter[class=IMP].period.end - period.start) in giorni"
+},
+{
+"question_id": "D07",
+"patient_id": "INSERISCI_ID_QUI",
+"question_text": "Il paziente ha effettuato una colonscopia o sigmoidoscopia? Se sì, quando e con quale esito?",
+"correct_answer": "Procedure con SNOMED 73761001 (colonscopia) + performedDateTime + outcome"
+},
+{
+"question_id": "D08",
+"patient_id": "INSERISCI_ID_QUI",
+"question_text": "Il paziente ha ricevuto la vaccinazione antinfluenzale nell'ultimo anno?",
+"correct_answer": "Immunization[vaccineCode=CVX 141 o testo influenza] con occurrenceDateTime nell'ultimo anno"
+},
+{
+"question_id": "D09",
+"patient_id": "INSERISCI_ID_QUI",
+"question_text": "Quali vaccinazioni ha ricevuto il paziente nel corso della vita? Elenca vaccino e data.",
+"correct_answer": "Immunization[status=completed][].vaccineCode.text + occurrenceDateTime"
+},
+{
+"question_id": "D10",
+"patient_id": "INSERISCI_ID_QUI",
+"question_text": "Esiste un piano di cura (CarePlan) attivo per il paziente? Se sì, quali attività prevede?",
+"correct_answer": "CarePlan[status=active].activity[].detail.description"
+},
+{
+"question_id": "E01",
+"patient_id": "INSERISCI_ID_QUI",
+"question_text": "Quanti anni ha il paziente alla data odierna?",
+"correct_answer": "anni calcolati da Patient.birthDate"
+},
+{
+"question_id": "E02",
+"patient_id": "INSERISCI_ID_QUI",
+"question_text": "Qual è il medico di base (general practitioner) assegnato al paziente?",
+"correct_answer": "Patient.generalPractitioner[].display"
+},
+{
+"question_id": "E03",
+"patient_id": "INSERISCI_ID_QUI",
+"question_text": "Il paziente ha fattori di rischio cardiovascolare documentati? Elencali (ipertensione, diabete, dislipidemia, fumo, obesità).",
+"correct_answer": "Condition[] + Observation[fumo/BMI] corrispondenti ai fattori di rischio CV"
+},
+{
+"question_id": "E04",
+"patient_id": "INSERISCI_ID_QUI",
+"question_text": "Il paziente ha allergie o intolleranze documentate? Se sì, specifica l'agente causale e la reazione.",
+"correct_answer": "AllergyIntolerance[].code.text + reaction[].manifestation[].text"
+},
+{
+"question_id": "E05",
+"patient_id": "INSERISCI_ID_QUI",
+"question_text": "Il paziente assume farmaci a cui risulta allergico nel record? (potenziale interazione critica)",
+"correct_answer": "Incrocio tra MedicationRequest[status=active].medication e AllergyIntolerance[].code"
+},
+{
+"question_id": "E06",
+"patient_id": "INSERISCI_ID_QUI",
+"question_text": "Il paziente diabetico ha l'HbA1c monitorata con frequenza adeguata (>= 1 misurazione ogni 6 mesi)?",
+"correct_answer": "Se Condition diabete presente: controlla intervalli tra Observation HbA1c consecutive"
+},
+{
+"question_id": "E07",
+"patient_id": "INSERISCI_ID_QUI",
+"question_text": "Il paziente è deceduto? Se sì, riporta la data e la causa se disponibile.",
+"correct_answer": "Patient.deceasedBoolean o Patient.deceasedDateTime + Condition causa di morte se presente"
+},
+{
+"question_id": "E08",
+"patient_id": "INSERISCI_ID_QUI",
+"question_text": "Il paziente fuma o ha fumato? Da quanti anni e quante sigarette al giorno (se disponibile)?",
+"correct_answer": "Observation[LOINC 72166-2].value + component per pack-years se presente"
+},
+{
+"question_id": "E09",
+"patient_id": "INSERISCI_ID_QUI",
+"question_text": "Il paziente iperteso è in terapia antipertensiva attiva? La terapia è coerente con le linee guida (almeno un farmaco di prima linea)?",
+"correct_answer": "Condition ipertensione presente + MedicationRequest ATC C02-C09 attivi"
+},
+{
+"question_id": "E10",
+"patient_id": "INSERISCI_ID_QUI",
+"question_text": "Fornisci un riassunto clinico sintetico del paziente in massimo 5 elementi: età, condizioni attive principali, farmaci in corso, ultimo accesso, alert critici (allergie o valori fuori range).",
+"correct_answer": "Sintesi libera basata su Patient + Condition + MedicationRequest + Encounter + AllergyIntolerance + Observation"
+}
+]
