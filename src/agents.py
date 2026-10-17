@@ -34,7 +34,7 @@ class MedicalAgents:
 
     def manager_router(self):
         """
-        Crea e restituisce l'agente orchestratore (Manager).
+        Crea e restituisce l'agente Manager.
         Applica il framework ReAct per valutare la domanda dell'utente, 
         selezionare l'agente più adatto per il compito e delegare l'azione senza inventare dati.
         """
