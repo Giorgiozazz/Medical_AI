@@ -218,7 +218,7 @@ def elaborate(question_id: str = None, user_input: str = None, correct_answer: s
         )
 
         # Se l'ICA è basso, forza un ciclo extra di ragionamento
-        if trigger_reflexion_by_ica:
+        if trigger_reflexion_by_ica or not is_approved:
             
             ref_task = med_tasks.reflexion_task(
                 agent=interpreter, 
@@ -234,6 +234,8 @@ def elaborate(question_id: str = None, user_input: str = None, correct_answer: s
 
             log.log["verifier_approved"] = True
         else:
+            log.log["n_refinement_cycles"] = 0
+            log.log["reflexion_executed"] = False
             log.log["verifier_approved"] = is_approved
 
     # Registrazione query finale ed esportazione su file
